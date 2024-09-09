@@ -1,50 +1,58 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 
-export class SendCodeViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | void> = this._onDidChangeTreeData.event;
+export class SendCodeWebviewProvider implements vscode.WebviewViewProvider {
+    private _webviewView?: vscode.WebviewView;
+    private _status: string = 'No submission yet';
+    private _gameMessage: string = 'Welcome to the Game! Follow the instructions.';
 
-    // Variables to hold game messages and submission status
-    private gameMessage: string = 'Welcome to the Game! Follow the instructions.';
-    private submissionStatus: string | undefined;
+    constructor(private readonly extensionUri: vscode.Uri) {}
 
-    getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
-        return element;
+    public resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken): void {
+        this._webviewView = webviewView;
+        this._webviewView.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')]
+        };
+
+        this._webviewView.webview.html = this.getHtmlForWebview();
     }
 
-    getChildren(element?: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
-        if (!element) {
-            // Create items for the tree view
-            const sendCodeItem = new vscode.TreeItem('Send Current Code to API', vscode.TreeItemCollapsibleState.None);
-            sendCodeItem.command = {
-                command: 'extension.sendCodeToAPI',
-                title: 'Send Code to API'
-            };
+    private getHtmlForWebview(): string {
+        const scriptUri = this._webviewView?.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'script.js'));
+        const styleUri = this._webviewView?.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'style.css'));
 
-            // Dynamic game message item
-            const gameMessageItem = new vscode.TreeItem(this.gameMessage, vscode.TreeItemCollapsibleState.None);
+        return `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Send Code to API</title>
+                <link href="${styleUri}" rel="stylesheet">
+            </head>
+            <body>
+                <div id="status">${this._status}</div>
+                <div id="gameMessage">${this._gameMessage}</div>
+                <button id="sendCodeButton">Send Code</button>
+                <script src="${scriptUri}"></script>
+            </body>
+            </html>
+        `;
+    }
 
-            // Show the current submission status in the tree view
-            const statusItem = new vscode.TreeItem(this.submissionStatus ? `Status: ${this.submissionStatus}` : 'No submission yet', vscode.TreeItemCollapsibleState.None);
-
-            return Promise.resolve([gameMessageItem, sendCodeItem, statusItem]);
+    public updateStatus(status: string): void {
+        this._status = status;
+        if (this._webviewView) {
+            this._webviewView.webview.html = this.getHtmlForWebview();
         }
-        return Promise.resolve([]);
     }
 
-    // Method to update the submission status and refresh the view
-    updateStatus(status: string): void {
-        this.submissionStatus = status;
-        this.refresh();
-    }
-
-    // Method to update game message dynamically
-    updateGameMessage(message: string): void {
-        this.gameMessage = message;
-        this.refresh();
-    }
-
-    refresh(): void {
-        this._onDidChangeTreeData.fire();
+    public updateGameMessage(message: string): void {
+        this._gameMessage = message;
+        if (this._webviewView) {
+            this._webviewView.webview.html = this.getHtmlForWebview();
+        }
     }
 }

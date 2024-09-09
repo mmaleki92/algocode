@@ -1,7 +1,7 @@
 {
   "name": "algocode",
   "displayName": "algocode",
-  "description": "code runner for Algo Game!",
+  "description": "Code runner for Algo Game!",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.93.0"
@@ -13,7 +13,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:sendCodeWebview"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -34,8 +36,9 @@
     "views": {
       "sendCodeToAPIContainer": [
         {
-          "id": "sendCodeToAPIView",
-          "name": "Send Code"
+          "id": "sendCodeWebview",
+          "name": "Send Code",
+          "type": "webview"
         }
       ]
     }
